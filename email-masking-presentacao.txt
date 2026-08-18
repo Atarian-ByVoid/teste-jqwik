@@ -1,0 +1,62 @@
+Exemplo prático de teste com jqwik: mascaramento de e-mails
+
+Objetivo
+--------
+Mostrar um exemplo simples de teste de propriedade usando jqwik para verificar que o usuario têm o e-mails mascarado corretamente.
+
+O problema que vamos abordar
+-----------
+Nós Queremos proteger o email do usuario mantendo o domínio intacto. Ou seja:
+- o primeiro caractere da parte local deve permanecer visível: exemplo b***t@teste.com - o b fica visivel
+- o último caractere da parte local deve permanecer visível b***t@teste.com
+- os caracteres entre eles devem virar `*`
+- o domínio (após `@`) não deve mudar
+
+Como funciona na pratica?
+-------------
+Temos uma classe EmailMasker responsavel pela logica do mascaramento
+1. `EmailMasker.mask(String email)`:
+   - valida se o e-mail é nulo ou não possui `@`
+   - preserva a parte do domínio
+   - mascara o nome do usuário com asteriscos
+   - exemplo: `joao.silva@example.com` -> `j*******a@example.com`
+
+2. `EmailMaskerPropertyTest` com jqwik:
+   - `maskedEmailShouldPreserveDomain`
+     * valida que o domínio do e-mail mascarado é igual ao original
+   - `maskedEmailShouldHideLocalPartCharacters`
+     * valida que a parte local mantém o primeiro e último caractere
+     * valida que os caracteres internos são apenas `*`
+
+Por que jqwik?
+---------------
+O jqwik não faz apenas testes com valores fixos: ele usa geradores de dados chamados `arbitraries` para criar automaticamente muitos e-mails diferentes. Esses geradores aprendem a produzir combinações variadas, como nomes curtos, nomes longos e domínios diferentes, o que ajuda a encontrar falhas que um teste manual não veria.
+
+A outra vantagem importante é o `shrinking`. Quando um caso falha, jqwik não salva apenas o valor ruim: ele tenta reduzir essa entrada até encontrar a menor versão que ainda reproduz o erro. Isso torna mais fácil entender o problema, porque o exemplo de falha fica simples e direto.
+
+Nota: o `shrinking` é útil para depuração, pois transforma um teste complexo em um caso mínimo legível, como `a@exemplo.com` em vez de um e-mail longo e confuso.
+
+Como o jqwik funciona
+---------------------
+- cada método anotado com `@Property` descreve uma propriedade que deve ser verdadeira para todos os valores gerados
+- `@ForAll` indica que o jqwik deve injetar valores aleatórios para aquele parâmetro
+- esses valores vêm dos geradores (`arbitraries`) definidos nos métodos anotados com `@Provide`
+- quando um teste falha, o jqwik executa `shrinking` para reduzir o caso a um exemplo mínimo
+- o diretório `.jqwik` guarda os resultados do teste e permite replay dos casos campeões para depuração posterior
+
+O que o teste garante
+----------------------
+- o domínio não é alterado
+- o comprimento da parte local permanece igual
+- o email do usuário é mascarado corretamente
+
+Como rodar
+----------
+Abra o terminal na pasta do projeto e execute:
+
+./gradlew test
+
+Observação
+-----------
+- o teste está isolado na lógica da máscara e não depende do Spring Boot
+- a validação é feita com propriedades, não apenas com casos fixos
